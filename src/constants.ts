@@ -1,14 +1,18 @@
+import type { TimerState } from './types.js';
+
 export const SESSION_TYPES = {
   focus: { label: 'Focus', minutes: 25 },
   shortBreak: { label: 'Short Break', minutes: 5 },
   longBreak: { label: 'Long Break', minutes: 15 }
-};
+} as const satisfies Record<string, { label: string; minutes: number }>;
+
+export type SessionType = keyof typeof SESSION_TYPES;
 
 export const FOCUS_BEFORE_LONG_BREAK = 4;
 export const ALARM_NAME = 'lookbusy-interval';
 export const STATE_KEY = 'timerState';
 
-export const DEFAULT_STATE = {
+export const DEFAULT_STATE: TimerState = {
   type: 'focus',
   status: 'idle', // idle | running | paused
   task: '',
@@ -19,11 +23,11 @@ export const DEFAULT_STATE = {
   completedFocus: 0
 };
 
-export function durationFor(type) {
+export function durationFor(type: SessionType): number {
   return SESSION_TYPES[type].minutes * 60 * 1000;
 }
 
-export function nextType(type, completedFocus) {
+export function nextType(type: SessionType, completedFocus: number): SessionType {
   if (type !== 'focus') return 'focus';
   return completedFocus > 0 && completedFocus % FOCUS_BEFORE_LONG_BREAK === 0
     ? 'longBreak'
