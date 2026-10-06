@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="styles.css">
+  <title>LookBusy Settings</title>
+  <style>body { width: 420px; margin: 24px auto; }</style>
+</head>
+<body>
+  <h1>LookBusy Settings</h1>
+  <label for="token">Notion Internal Integration Secret</label>
+  <input id="token" type="password" autocomplete="off" placeholder="secret_...">
+  <label for="db">Target Database ID</label>
+  <input id="db" type="text" autocomplete="off" placeholder="32-character database ID">
+  <label><input id="sound" type="checkbox"> Play a sound when an interval ends</label>
+  <div class="controls"><button id="save">Save</button></div>
+  <div id="status" class="muted"></div>
+  <script type="module" src="options.js"></script>
+</body>
+</html>
