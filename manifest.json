@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "LookBusy",
+  "version": "1.0.0",
+  "description": "Pomodoro timer that logs your focus sessions to Notion. Because if it's logged, it counts as work.",
+  "permissions": ["storage", "alarms", "notifications", "offscreen"],
+  "host_permissions": ["https://api.notion.com/*"],
+  "background": { "service_worker": "src/background.js", "type": "module" },
+  "action": { "default_popup": "popup.html", "default_title": "LookBusy" },
+  "options_page": "options.html"
+}

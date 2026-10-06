@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="styles.css">
+  <title>LookBusy</title>
+</head>
+<body>
+  <h1>LookBusy</h1>
+  <div id="type" class="badge">Focus</div>
+  <div id="time" class="time">25:00</div>
+  <input id="task" type="text" placeholder="What are you pretending to work on?" maxlength="200">
+  <div class="controls">
+    <button id="startPause">Start</button>
+    <button id="reset" class="secondary">Reset</button>
+    <button id="skip" class="secondary">Skip</button>
+  </div>
+  <div id="count" class="muted"></div>
+  <a href="#" id="options" class="muted">Settings</a>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
