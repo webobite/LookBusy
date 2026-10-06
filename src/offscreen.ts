@@ -1,4 +1,6 @@
-chrome.runtime.onMessage.addListener((msg) => {
+import type { RuntimeMessage } from './types.js';
+
+chrome.runtime.onMessage.addListener((msg: RuntimeMessage) => {
   if (msg.target !== 'offscreen' || msg.action !== 'beep') return;
   const ctx = new AudioContext();
   const osc = ctx.createOscillator();

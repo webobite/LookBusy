@@ -4,21 +4,23 @@ import {
   SESSION_TYPES,
   STATE_KEY,
   durationFor,
-  nextType
+  nextType,
+  type SessionType
 } from './constants.js';
 import { getSettings, logSession } from './notion.js';
+import type { CompletedSession, OffscreenMessage, RuntimeMessage, TimerState } from './types.js';
 
-async function getState() {
-  const data = await chrome.storage.local.get(STATE_KEY);
+async function getState(): Promise<TimerState> {
+  const data = await chrome.storage.local.get<{ [STATE_KEY]?: Partial<TimerState> }>(STATE_KEY);
   return { ...DEFAULT_STATE, ...(data[STATE_KEY] || {}) };
 }
 
-async function setState(state) {
+async function setState(state: TimerState): Promise<TimerState> {
   await chrome.storage.local.set({ [STATE_KEY]: state });
   return state;
 }
 
-function freshState(prev, type) {
+function freshState(prev: TimerState, type: SessionType): TimerState {
   const durationMs = durationFor(type);
   return {
     ...DEFAULT_STATE,
@@ -30,7 +32,7 @@ function freshState(prev, type) {
   };
 }
 
-async function start(task) {
+async function start(task?: string): Promise<TimerState> {
   const state = await getState();
   if (state.status === 'running') return state;
   const now = Date.now();
@@ -42,37 +44,40 @@ async function start(task) {
   return setState(state);
 }
 
-async function pause() {
+async function pause(): Promise<TimerState> {
   const state = await getState();
   if (state.status !== 'running') return state;
-  state.remainingMs = Math.max(0, state.endsAt - Date.now());
+  // A running timer always has endsAt set.
+  state.remainingMs = Math.max(0, state.endsAt! - Date.now());
   state.endsAt = null;
   state.status = 'paused';
   await chrome.alarms.clear(ALARM_NAME);
   return setState(state);
 }
 
-async function reset() {
+async function reset(): Promise<TimerState> {
   const state = await getState();
   await chrome.alarms.clear(ALARM_NAME);
   return setState(freshState(state, state.type));
 }
 
-async function skip() {
+async function skip(): Promise<TimerState> {
   const state = await getState();
   await chrome.alarms.clear(ALARM_NAME);
   return setState(freshState(state, nextType(state.type, state.completedFocus)));
 }
 
-async function setTask(task) {
+async function setTask(task: string): Promise<TimerState> {
   const state = await getState();
   state.task = task;
   return setState(state);
 }
 
-async function playSound() {
+async function playSound(): Promise<void> {
   try {
-    const existing = await chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] });
+    const existing = await chrome.runtime.getContexts({
+      contextTypes: ['OFFSCREEN_DOCUMENT' as chrome.runtime.ContextType]
+    });
     if (!existing.length) {
       await chrome.offscreen.createDocument({
         url: 'offscreen.html',
@@ -80,17 +85,19 @@ async function playSound() {
         justification: 'Play a chime when an interval completes'
       });
     }
-    await chrome.runtime.sendMessage({ target: 'offscreen', action: 'beep' });
+    const beep: OffscreenMessage = { target: 'offscreen', action: 'beep' };
+    await chrome.runtime.sendMessage(beep);
   } catch (err) {
     console.warn('LookBusy: audio failed', err);
   }
 }
 
-async function complete() {
+async function complete(): Promise<void> {
   const state = await getState();
   if (state.status !== 'running') return;
   const endedAt = Date.now();
-  const finished = { type: state.type, task: state.task, startedAt: state.startedAt, endedAt };
+  // A running timer always has startedAt set.
+  const finished: CompletedSession = { type: state.type, task: state.task, startedAt: state.startedAt!, endedAt };
   const completedFocus = state.type === 'focus' ? state.completedFocus + 1 : state.completedFocus;
   const next = nextType(state.type, completedFocus);
 
@@ -116,18 +123,22 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === ALARM_NAME) complete();
 });
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg.target === 'offscreen') return false;
-  const actions = {
-    start: () => start(msg.task),
-    pause,
-    reset,
-    skip,
-    setTask: () => setTask(msg.task),
-    getState
-  };
-  const fn = actions[msg.action];
-  if (!fn) return false;
-  fn().then(sendResponse);
-  return true;
-});
+chrome.runtime.onMessage.addListener(
+  (msg: RuntimeMessage, _sender, sendResponse: (state: TimerState) => void) => {
+    if (msg.target === 'offscreen') return false;
+    let pending: Promise<TimerState>;
+    switch (msg.action) {
+      case 'start': pending = start(msg.task); break;
+      case 'pause': pending = pause(); break;
+      case 'reset': pending = reset(); break;
+      case 'skip': pending = skip(); break;
+      case 'setTask': pending = setTask(msg.task); break;
+      case 'getState': pending = getState(); break;
+      default:
+        msg satisfies never;
+        return false;
+    }
+    pending.then(sendResponse);
+    return true;
+  }
+);
