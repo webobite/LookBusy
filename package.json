@@ -1,0 +1,19 @@
+{
+  "name": "lookbusy",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc && node scripts/copy-static.mjs",
+    "watch": "node scripts/copy-static.mjs && tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "node -e \"import('node:fs/promises').then((fs) => fs.rm('dist', { recursive: true, force: true }))\""
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.3.4",
+    "typescript": "^7.0.2"
+  }
+}
