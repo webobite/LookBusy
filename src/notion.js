@@ -40,7 +40,7 @@ export async function logSession(session) {
     const res = await fetch(NOTION_URL, {
       method: 'POST',
       headers: {
-        Authorization: `******
+        Authorization: 'Bearer ' + notionToken,
         'Content-Type': 'application/json',
         'Notion-Version': NOTION_VERSION
       },
