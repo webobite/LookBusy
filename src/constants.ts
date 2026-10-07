@@ -16,6 +16,7 @@ export const DEFAULT_STATE: TimerState = {
   type: 'focus',
   status: 'idle', // idle | running | paused
   task: '',
+  description: '',
   durationMs: SESSION_TYPES.focus.minutes * 60 * 1000,
   remainingMs: SESSION_TYPES.focus.minutes * 60 * 1000,
   startedAt: null, // when the current interval was first started
@@ -33,3 +34,11 @@ export function nextType(type: SessionType, completedFocus: number): SessionType
     ? 'longBreak'
     : 'shortBreak';
 }
+
+// chrome.storage.local keys. These are per device and never synced.
+export const STREAK_KEY = 'streak';
+export const DAY_CACHE_KEY = 'dayCache';
+export const DEVICE_NAME_KEY = 'deviceName';
+export const DEVICE_ID_KEY = 'deviceId';
+export const PENDING_RENAME_KEY = 'pendingRename';
+export const RENAME_ALARM = 'lookbusy-rename';

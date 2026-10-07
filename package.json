@@ -10,7 +10,8 @@
     "build": "tsc && node scripts/copy-static.mjs",
     "watch": "node scripts/copy-static.mjs && tsc --watch",
     "typecheck": "tsc --noEmit",
-    "clean": "node -e \"import('node:fs/promises').then((fs) => fs.rm('dist', { recursive: true, force: true }))\""
+    "clean": "node -e \"import('node:fs/promises').then((fs) => fs.rm('dist', { recursive: true, force: true }))\"",
+    "test": "npm run build && node --test test/"
   },
   "devDependencies": {
     "@types/chrome": "^0.3.4",
