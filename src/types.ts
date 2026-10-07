@@ -26,6 +26,7 @@ export interface CompletedSession {
   type: SessionType;
   task: string;
   description: string;
+  streak: number;
   startedAt: number;
   endedAt: number;
 }

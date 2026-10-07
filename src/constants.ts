@@ -34,3 +34,6 @@ export function nextType(type: SessionType, completedFocus: number): SessionType
     ? 'longBreak'
     : 'shortBreak';
 }
+
+// chrome.storage.local keys. These are per device and never synced.
+export const STREAK_KEY = 'streak';

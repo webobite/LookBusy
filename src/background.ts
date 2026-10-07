@@ -3,12 +3,14 @@ import {
   DEFAULT_STATE,
   SESSION_TYPES,
   STATE_KEY,
+  STREAK_KEY,
   durationFor,
   nextType,
   type SessionType
 } from './constants.js';
 import { getSettings, logSession } from './notion.js';
-import type { CompletedSession, OffscreenMessage, RuntimeMessage, TimerState } from './types.js';
+import { EMPTY_STREAK, localDay, nextStreak } from './streak.js';
+import type { CompletedSession, OffscreenMessage, RuntimeMessage, StreakState, TimerState } from './types.js';
 
 async function getState(): Promise<TimerState> {
   const data = await chrome.storage.local.get<{ [STATE_KEY]?: Partial<TimerState> }>(STATE_KEY);
@@ -80,6 +82,14 @@ async function setDescription(description: string): Promise<TimerState> {
   return setState(state);
 }
 
+// Updates the stored streak for an interval that started on `day`, returning the value to log.
+async function advanceStreak(day: string, isFocus: boolean): Promise<number> {
+  const data = await chrome.storage.local.get<{ [STREAK_KEY]?: StreakState }>(STREAK_KEY);
+  const { state, value } = nextStreak(data[STREAK_KEY] || EMPTY_STREAK, day, isFocus);
+  await chrome.storage.local.set({ [STREAK_KEY]: state });
+  return value;
+}
+
 async function playSound(): Promise<void> {
   try {
     const existing = await chrome.runtime.getContexts({
@@ -104,11 +114,15 @@ async function complete(): Promise<void> {
   if (state.status !== 'running') return;
   const endedAt = Date.now();
   // A running timer always has startedAt set.
+  const startedAt = state.startedAt!;
+  // Counted from completed work, whether or not the Notion write below succeeds.
+  const streak = await advanceStreak(localDay(startedAt), state.type === 'focus');
   const finished: CompletedSession = {
     type: state.type,
     task: state.task,
     description: state.description,
-    startedAt: state.startedAt!,
+    streak,
+    startedAt,
     endedAt
   };
   const completedFocus = state.type === 'focus' ? state.completedFocus + 1 : state.completedFocus;
