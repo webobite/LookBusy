@@ -6,6 +6,7 @@ export interface TimerState {
   type: SessionType;
   status: TimerStatus;
   task: string;
+  description: string;
   durationMs: number;
   remainingMs: number;
   startedAt: number | null; // when the current interval was first started
@@ -24,6 +25,7 @@ export type LogResult = { ok: true } | { ok: false; error: string };
 export interface CompletedSession {
   type: SessionType;
   task: string;
+  description: string;
   startedAt: number;
   endedAt: number;
 }
@@ -74,6 +76,7 @@ export type WorkerRequest =
   | { action: 'reset' }
   | { action: 'skip' }
   | { action: 'setTask'; task: string }
+  | { action: 'setDescription'; description: string }
   | { action: 'getState' };
 
 // Message from the service worker to the offscreen document.

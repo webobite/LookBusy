@@ -23,6 +23,8 @@ function render(): void {
   el('startPause', HTMLButtonElement).textContent = state.status === 'running' ? 'Pause' : state.status === 'paused' ? 'Resume' : 'Start';
   const task = el('task', HTMLInputElement);
   if (document.activeElement !== task) task.value = state.task;
+  const description = el('description', HTMLTextAreaElement);
+  if (document.activeElement !== description) description.value = state.description;
   el('count', HTMLElement).textContent = `Focus sessions completed: ${state.completedFocus}`;
 }
 
@@ -41,6 +43,7 @@ el('startPause', HTMLButtonElement).addEventListener('click', async () => {
 el('reset', HTMLButtonElement).addEventListener('click', async () => { state = await send({ action: 'reset' }); render(); });
 el('skip', HTMLButtonElement).addEventListener('click', async () => { state = await send({ action: 'skip' }); render(); });
 el('task', HTMLInputElement).addEventListener('input', () => send({ action: 'setTask', task: el('task', HTMLInputElement).value }));
+el('description', HTMLTextAreaElement).addEventListener('input', () => send({ action: 'setDescription', description: el('description', HTMLTextAreaElement).value }));
 el('options', HTMLAnchorElement).addEventListener('click', (e) => { e.preventDefault(); chrome.runtime.openOptionsPage(); });
 
 chrome.storage.onChanged.addListener((_c, area) => { if (area === 'local') refresh(); });

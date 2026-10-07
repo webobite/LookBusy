@@ -16,6 +16,7 @@ export const DEFAULT_STATE: TimerState = {
   type: 'focus',
   status: 'idle', // idle | running | paused
   task: '',
+  description: '',
   durationMs: SESSION_TYPES.focus.minutes * 60 * 1000,
   remainingMs: SESSION_TYPES.focus.minutes * 60 * 1000,
   startedAt: null, // when the current interval was first started

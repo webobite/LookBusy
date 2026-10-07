@@ -26,6 +26,7 @@ function freshState(prev: TimerState, type: SessionType): TimerState {
     ...DEFAULT_STATE,
     type,
     task: prev.task,
+    description: prev.description,
     durationMs,
     remainingMs: durationMs,
     completedFocus: prev.completedFocus
@@ -73,6 +74,12 @@ async function setTask(task: string): Promise<TimerState> {
   return setState(state);
 }
 
+async function setDescription(description: string): Promise<TimerState> {
+  const state = await getState();
+  state.description = description;
+  return setState(state);
+}
+
 async function playSound(): Promise<void> {
   try {
     const existing = await chrome.runtime.getContexts({
@@ -97,7 +104,13 @@ async function complete(): Promise<void> {
   if (state.status !== 'running') return;
   const endedAt = Date.now();
   // A running timer always has startedAt set.
-  const finished: CompletedSession = { type: state.type, task: state.task, startedAt: state.startedAt!, endedAt };
+  const finished: CompletedSession = {
+    type: state.type,
+    task: state.task,
+    description: state.description,
+    startedAt: state.startedAt!,
+    endedAt
+  };
   const completedFocus = state.type === 'focus' ? state.completedFocus + 1 : state.completedFocus;
   const next = nextType(state.type, completedFocus);
 
@@ -133,6 +146,7 @@ chrome.runtime.onMessage.addListener(
       case 'reset': pending = reset(); break;
       case 'skip': pending = skip(); break;
       case 'setTask': pending = setTask(msg.task); break;
+      case 'setDescription': pending = setDescription(msg.description); break;
       case 'getState': pending = getState(); break;
       default:
         msg satisfies never;
