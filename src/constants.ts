@@ -37,3 +37,6 @@ export function nextType(type: SessionType, completedFocus: number): SessionType
 
 // chrome.storage.local keys. These are per device and never synced.
 export const STREAK_KEY = 'streak';
+export const DAY_CACHE_KEY = 'dayCache';
+export const DEVICE_NAME_KEY = 'deviceName';
+export const DEVICE_ID_KEY = 'deviceId';

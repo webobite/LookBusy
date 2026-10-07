@@ -139,9 +139,11 @@ async function complete(): Promise<void> {
     type: 'basic',
     iconUrl: 'icons/icon128.png',
     title: `${label} complete`,
-    message: result.ok
-      ? `Logged to Notion. Up next: ${SESSION_TYPES[next].label}.`
-      : `Not logged: ${result.error}`
+    message: !result.ok
+      ? `Not logged: ${result.error}`
+      : result.warning
+        ? `Logged to Notion, ${result.warning}. Up next: ${SESSION_TYPES[next].label}.`
+        : `Logged to Notion. Up next: ${SESSION_TYPES[next].label}.`
   });
   if (settings.soundEnabled) await playSound();
 }

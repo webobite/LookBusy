@@ -14,13 +14,19 @@ export interface TimerState {
   completedFocus: number;
 }
 
+export type SchemaVersion = 'v1' | 'v2';
+
+// Synced across the user's Chrome profile.
 export interface Settings {
   notionToken: string;
   databaseId: string;
+  dailyDatabaseId: string;
+  schemaVersion: SchemaVersion;
   soundEnabled: boolean;
 }
 
-export type LogResult = { ok: true } | { ok: false; error: string };
+// `warning` reports a partial success, such as a session logged without its day link.
+export type LogResult = { ok: true; warning?: string } | { ok: false; error: string };
 
 export interface CompletedSession {
   type: SessionType;
@@ -30,8 +36,6 @@ export interface CompletedSession {
   startedAt: number;
   endedAt: number;
 }
-
-export type SchemaVersion = 'v1' | 'v2';
 
 // Per-device identity, kept in chrome.storage.local.
 export interface Device {

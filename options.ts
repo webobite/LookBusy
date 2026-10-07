@@ -1,3 +1,4 @@
+import { getSettings } from './src/notion.js';
 import type { Settings } from './src/types.js';
 import { el } from './src/ui.js';
 
@@ -8,14 +9,16 @@ export function parseDatabaseId(input: string): string {
 }
 
 async function load(): Promise<void> {
-  const s = await chrome.storage.sync.get<Settings>({ notionToken: '', databaseId: '', soundEnabled: false });
+  const s = await getSettings();
   el('token', HTMLInputElement).value = s.notionToken;
   el('db', HTMLInputElement).value = s.databaseId;
   el('sound', HTMLInputElement).checked = s.soundEnabled;
 }
 
 el('save', HTMLButtonElement).addEventListener('click', async () => {
+  const stored = await getSettings();
   const settings: Settings = {
+    ...stored,
     notionToken: el('token', HTMLInputElement).value.trim(),
     databaseId: parseDatabaseId(el('db', HTMLInputElement).value),
     soundEnabled: el('sound', HTMLInputElement).checked
