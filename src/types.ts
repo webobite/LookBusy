@@ -82,6 +82,7 @@ export type WorkerRequest =
   | { action: 'skip' }
   | { action: 'setTask'; task: string }
   | { action: 'setDescription'; description: string }
+  | { action: 'applyRename' } // starts the device rename job; responds with the current TimerState
   | { action: 'getState' };
 
 // Message from the service worker to the offscreen document.

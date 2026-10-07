@@ -40,3 +40,5 @@ export const STREAK_KEY = 'streak';
 export const DAY_CACHE_KEY = 'dayCache';
 export const DEVICE_NAME_KEY = 'deviceName';
 export const DEVICE_ID_KEY = 'deviceId';
+export const PENDING_RENAME_KEY = 'pendingRename';
+export const RENAME_ALARM = 'lookbusy-rename';

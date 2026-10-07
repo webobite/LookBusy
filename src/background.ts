@@ -1,6 +1,8 @@
 import {
   ALARM_NAME,
   DEFAULT_STATE,
+  PENDING_RENAME_KEY,
+  RENAME_ALARM,
   SESSION_TYPES,
   STATE_KEY,
   STREAK_KEY,
@@ -8,9 +10,16 @@ import {
   nextType,
   type SessionType
 } from './constants.js';
-import { getSettings, logSession } from './notion.js';
+import { buildDevicePatch, buildRenameQuery, getSettings, logSession, notionFetch } from './notion.js';
 import { EMPTY_STREAK, localDay, nextStreak } from './streak.js';
-import type { CompletedSession, OffscreenMessage, RuntimeMessage, StreakState, TimerState } from './types.js';
+import type {
+  CompletedSession,
+  OffscreenMessage,
+  PendingRename,
+  RuntimeMessage,
+  StreakState,
+  TimerState
+} from './types.js';
 
 async function getState(): Promise<TimerState> {
   const data = await chrome.storage.local.get<{ [STATE_KEY]?: Partial<TimerState> }>(STATE_KEY);
@@ -148,8 +157,88 @@ async function complete(): Promise<void> {
   if (settings.soundEnabled) await playSound();
 }
 
+// ---------------------------------------------------------------------------
+// Device rename: sets the new name on every past row with this device's ID.
+// The query skips rows that already have the name, so the job is idempotent and can
+// resume from scratch after the worker is stopped. The alarm restarts it until done.
+
+const RENAME_PACE_MS = 350; // about 3 requests per second, Notion's average limit
+const MAX_RETRY_WAIT_MS = 60_000;
+let renaming = false;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function readPendingRename(): Promise<PendingRename | null> {
+  const data = await chrome.storage.local.get<{ [PENDING_RENAME_KEY]?: PendingRename }>(PENDING_RENAME_KEY);
+  return data[PENDING_RENAME_KEY] || null;
+}
+
+async function finishRename(): Promise<void> {
+  await chrome.storage.local.remove(PENDING_RENAME_KEY);
+  await chrome.alarms.clear(RENAME_ALARM);
+}
+
+async function waitAfter(res: { status: number; retryAfter?: number }): Promise<boolean> {
+  if (res.status !== 429) return false;
+  await sleep(Math.min((res.retryAfter || 1) * 1000, MAX_RETRY_WAIT_MS));
+  return true;
+}
+
+async function runRename(): Promise<void> {
+  if (renaming) return;
+  renaming = true;
+  try {
+    for (;;) {
+      const job = await readPendingRename();
+      if (!job) return finishRename();
+      const { notionToken, databaseId, schemaVersion } = await getSettings();
+      if (!notionToken || !databaseId || schemaVersion !== 'v2') return finishRename();
+
+      const query = await notionFetch<{ results: { id: string }[] }>(
+        notionToken, 'POST', `/databases/${databaseId}/query`, buildRenameQuery(job.deviceId, job.name)
+      );
+      if (!query.ok) {
+        if (await waitAfter(query)) continue;
+        console.warn('LookBusy: rename query failed, will retry', query.error);
+        return;
+      }
+      if (!query.data.results.length) {
+        // Only finish if the user has not picked yet another name meanwhile.
+        if ((await readPendingRename())?.name === job.name) return finishRename();
+        continue;
+      }
+
+      for (const row of query.data.results) {
+        const current = await readPendingRename();
+        if (!current || current.name !== job.name) break; // renamed again: re-query with the new name
+        let patch = await notionFetch(notionToken, 'PATCH', `/pages/${row.id}`, buildDevicePatch(job.name));
+        while (!patch.ok && (await waitAfter(patch))) {
+          patch = await notionFetch(notionToken, 'PATCH', `/pages/${row.id}`, buildDevicePatch(job.name));
+        }
+        if (!patch.ok) {
+          console.warn('LookBusy: rename update failed, will retry', patch.error);
+          return;
+        }
+        await chrome.storage.local.set({ [PENDING_RENAME_KEY]: { ...current, updated: current.updated + 1 } });
+        await sleep(RENAME_PACE_MS);
+      }
+    }
+  } finally {
+    renaming = false;
+  }
+}
+
+async function startRename(): Promise<void> {
+  if (!(await readPendingRename())) return;
+  await chrome.alarms.create(RENAME_ALARM, { periodInMinutes: 1 });
+  await runRename();
+}
+
+chrome.runtime.onStartup.addListener(() => { startRename(); });
+
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === ALARM_NAME) complete();
+  if (alarm.name === RENAME_ALARM) runRename();
 });
 
 chrome.runtime.onMessage.addListener(
@@ -163,6 +252,10 @@ chrome.runtime.onMessage.addListener(
       case 'skip': pending = skip(); break;
       case 'setTask': pending = setTask(msg.task); break;
       case 'setDescription': pending = setDescription(msg.description); break;
+      case 'applyRename':
+        startRename();
+        pending = getState();
+        break;
       case 'getState': pending = getState(); break;
       default:
         msg satisfies never;

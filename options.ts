@@ -1,8 +1,8 @@
-import { DEVICE_ID_KEY, DEVICE_NAME_KEY } from './src/constants.js';
+import { DEVICE_ID_KEY, DEVICE_NAME_KEY, PENDING_RENAME_KEY } from './src/constants.js';
 import { createLoggingDatabases, detectSchemaVersion, getDevice, getSettings, listParentPages } from './src/notion.js';
 import { describeSchemas } from './src/schema.js';
-import type { Settings } from './src/types.js';
-import { el } from './src/ui.js';
+import type { PendingRename, Settings } from './src/types.js';
+import { el, send } from './src/ui.js';
 
 // Accepts a raw ID or a full Notion URL and extracts the 32-char hex ID.
 export function parseNotionId(input: string): string {
@@ -18,6 +18,7 @@ const db = el('db', HTMLInputElement);
 const daily = el('daily', HTMLInputElement);
 const sound = el('sound', HTMLInputElement);
 const status = el('status', HTMLElement);
+const renameStatus = el('renameStatus', HTMLElement);
 const setupHint = el('setupHint', HTMLElement);
 const setupStart = el('setupStart', HTMLButtonElement);
 const setupPick = el('setupPick', HTMLElement);
@@ -45,11 +46,21 @@ function deviceNameError(name: string): string | null {
   return null;
 }
 
-// Saves this device's name, creating its ID on first save.
-async function saveDevice(name: string): Promise<void> {
+// Saves this device's name, creating its ID on first save. Starts a rename of past rows when asked.
+async function saveDevice(name: string, renameRows: boolean): Promise<boolean> {
   const prev = await getDevice();
   const id = prev.id || crypto.randomUUID();
   await chrome.storage.local.set({ [DEVICE_NAME_KEY]: name, [DEVICE_ID_KEY]: id });
+  if (!renameRows || !prev.name || prev.name === name) return false;
+  const job: PendingRename = { deviceId: id, name, updated: 0 };
+  await chrome.storage.local.set({ [PENDING_RENAME_KEY]: job });
+  await send({ action: 'applyRename' });
+  return true;
+}
+
+function showRename(job: PendingRename | undefined, finished: boolean): void {
+  if (job) show(renameStatus, `Updating the device name on past Notion rows: ${job.updated} updated so far…`);
+  else if (finished) show(renameStatus, 'Device name updated on all past Notion rows.');
 }
 
 function refreshSetup(): void {
@@ -78,6 +89,8 @@ async function load(): Promise<void> {
   daily.value = s.dailyDatabaseId;
   sound.checked = s.soundEnabled;
   deviceName.value = device.name;
+  const pending = await chrome.storage.local.get<{ [PENDING_RENAME_KEY]?: PendingRename }>(PENDING_RENAME_KEY);
+  showRename(pending[PENDING_RENAME_KEY], false);
   refreshSetup();
 }
 
@@ -100,12 +113,12 @@ el('save', HTMLButtonElement).addEventListener('click', async () => {
     else detectError = detected.error;
   }
   await chrome.storage.sync.set(settings);
-  await saveDevice(name);
+  const renaming = await saveDevice(name, settings.schemaVersion === 'v2' && settings.databaseId !== '');
 
   if (detectError) {
     show(status, `Saved, but the database could not be read (${detectError}). Logging with the original schema.`, true);
   } else {
-    show(status, 'Saved. Productivity theatre is now fully funded.');
+    show(status, 'Saved. Productivity theatre is now fully funded.' + (renaming ? ' Renaming past rows in the background.' : ''));
   }
   load();
 });
@@ -203,7 +216,7 @@ approveCreate.addEventListener('click', async () => {
       schemaVersion: 'v2'
     };
     await chrome.storage.sync.set(settings);
-    await saveDevice(name);
+    await saveDevice(name, false);
     await load();
     show(setupStatus, 'Done! Logging is ready. ');
     setupStatus.append(
@@ -216,5 +229,11 @@ approveCreate.addEventListener('click', async () => {
 });
 
 for (const field of [token, deviceName, db]) field.addEventListener('input', refreshSetup);
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  const change = changes[PENDING_RENAME_KEY];
+  if (area !== 'local' || !change) return;
+  showRename(change.newValue as PendingRename | undefined, change.oldValue !== undefined);
+});
 
 load();

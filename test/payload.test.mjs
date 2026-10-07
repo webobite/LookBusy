@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import {
   buildDailyDatabasePayload,
   buildDailyRollupsPatch,
+  buildDevicePatch,
   buildPagePayload,
+  buildRenameQuery,
   buildSessionsDatabasePayload,
   schemaVersionOf
 } from '../dist/src/notion.js';
@@ -86,4 +88,19 @@ test('schema version detection', () => {
   assert.equal(schemaVersionOf({ Task: { type: 'title' }, Start: { type: 'date' }, End: { type: 'date' } }), 'v2');
   assert.equal(schemaVersionOf({ Name: { type: 'title' }, Date: { type: 'date' } }), 'v1');
   assert.equal(schemaVersionOf({ Task: { type: 'rich_text' }, Start: { type: 'date' }, End: { type: 'date' } }), 'v1');
+});
+
+test('rename query matches this device ID and rows not yet renamed', () => {
+  assert.deepEqual(buildRenameQuery('dev-1', 'Office Mac').filter, {
+    and: [
+      { property: 'Device ID', rich_text: { equals: 'dev-1' } },
+      {
+        or: [
+          { property: 'Device', select: { does_not_equal: 'Office Mac' } },
+          { property: 'Device', select: { is_empty: true } }
+        ]
+      }
+    ]
+  });
+  assert.deepEqual(buildDevicePatch('Office Mac'), { properties: { Device: { select: { name: 'Office Mac' } } } });
 });

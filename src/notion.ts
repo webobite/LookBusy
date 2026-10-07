@@ -199,6 +199,30 @@ export function buildDayPagePayload(dailyDatabaseId: string, day: string) {
   };
 }
 
+// Rows of this device whose Device is not yet `name`.
+export function buildRenameQuery(deviceId: string, name: string, startCursor?: string) {
+  const P = SESSION_PROPS;
+  return {
+    filter: {
+      and: [
+        { property: P.deviceId, rich_text: { equals: deviceId } },
+        {
+          or: [
+            { property: P.device, select: { does_not_equal: name } },
+            { property: P.device, select: { is_empty: true } }
+          ]
+        }
+      ]
+    },
+    page_size: 100,
+    ...(startCursor ? { start_cursor: startCursor } : {})
+  };
+}
+
+export function buildDevicePatch(name: string) {
+  return { properties: { [SESSION_PROPS.device]: { select: { name } } } };
+}
+
 // ---------------------------------------------------------------------------
 // Session logging
 
