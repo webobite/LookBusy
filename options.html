@@ -10,8 +10,12 @@
   <h1>LookBusy Settings</h1>
   <label for="token">Notion Internal Integration Secret</label>
   <input id="token" type="password" autocomplete="off" placeholder="secret_...">
-  <label for="db">Target Database ID</label>
-  <input id="db" type="text" autocomplete="off" placeholder="32-character database ID">
+  <label for="deviceName">Device name (required, this computer only)</label>
+  <input id="deviceName" type="text" autocomplete="off" maxlength="100" placeholder="e.g. Work laptop">
+  <label for="db">Sessions Database ID</label>
+  <input id="db" type="text" autocomplete="off" placeholder="32-character database ID or URL">
+  <label for="daily">Daily Summary Database ID (optional)</label>
+  <input id="daily" type="text" autocomplete="off" placeholder="32-character database ID or URL">
   <label><input id="sound" type="checkbox"> Play a sound when an interval ends</label>
   <div class="controls"><button id="save">Save</button></div>
   <div id="status" class="muted"></div>
