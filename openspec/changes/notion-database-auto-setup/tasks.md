@@ -2,26 +2,26 @@
 
 ## 1. Shared schema, settings and test harness
 
-- [ ] 1.1 Add `"test": "npm run build && node --test test/"` to `package.json` and create a `test/` folder with a placeholder test; verify that `npm test` runs and passes
-- [ ] 1.2 Create `src/schema.ts` with the property names for Sessions `v2`, Sessions `v1` and Daily, the database titles, the `Completed` value, the `Focus Count` formula expression, select options derived from `SESSION_TYPES`, and `describeSchemas()`; verify with `npm run typecheck`
+- [x] 1.1 Add `"test": "npm run build && node --test test/"` to `package.json` and create a `test/` folder with a placeholder test; verify that `npm test` runs and passes
+- [x] 1.2 Create `src/schema.ts` with the property names for Sessions `v2`, Sessions `v1` and Daily, the database titles, the `Completed` value, the `Focus Count` formula expression, select options derived from `SESSION_TYPES`, and `describeSchemas()`; verify with `npm run typecheck`
 - [ ] 1.3 Extend `Settings` in `src/types.ts` with `dailyDatabaseId` and `schemaVersion: 'v1' | 'v2'`, with defaults `''` and `'v1'` in `getSettings()` and in the `options.ts` load; verify that `npm run typecheck` passes and an existing install still loads its settings
 
 ## 2. Description and streak in the worker and popup
 
-- [ ] 2.1 Add `description` to `TimerState`, `DEFAULT_STATE` and `CompletedSession`, plus a `setDescription` `WorkerRequest` handled in `src/background.ts` like `setTask`; verify with `npm run typecheck`
+- [x] 2.1 Add `description` to `TimerState`, `DEFAULT_STATE` and `CompletedSession`, plus a `setDescription` `WorkerRequest` handled in `src/background.ts` like `setTask`; verify with `npm run typecheck`
 - [ ] 2.2 Add an optional `<textarea id="description">` to `popup.html` and wire it in `popup.ts`, mirroring the task input (send on input, restore on render without overwriting while focused); verify in Chrome that the text survives closing and reopening the popup
-- [ ] 2.3 Create `src/streak.ts` with pure `localDay(ts)` and `nextStreak(prev, today, isFocus)`; add `test/streak.test.mjs` covering consecutive day, same day, gap, a break before today's Focus, a break after a gap, and month and year boundaries; verify `npm test` passes
+- [x] 2.3 Create `src/streak.ts` with pure `localDay(ts)` and `nextStreak(prev, today, isFocus)`; add `test/streak.test.mjs` covering consecutive day, same day, gap, a break before today's Focus, a break after a gap, and month and year boundaries; verify `npm test` passes
 - [ ] 2.4 In `src/background.ts`, on interval completion, read and update `{ lastFocusDay, streak }` in `chrome.storage.local` and pass `streak` and `description` in the `CompletedSession`; verify in DevTools storage that the streak value is updated after a Focus completes and unchanged after a break
 
 ## 3. Notion client: logging
 
 - [ ] 3.1 Extract `notionFetch(token, method, path, body?)` in `src/notion.ts` and move `logSession` onto it; verify that `npm run typecheck` passes and a completed interval still logs to an existing `v1` database in Chrome
-- [ ] 3.2 Make `buildPagePayload` branch on `schemaVersion`: `v1` reproduces today's payload, `v2` writes Task, Description (truncated to 2000 characters), Session Type, Status, Start, End, Streak, Device and Device ID (from `chrome.storage.local`, empty when unset) and an optional Day relation; add `test/payload.test.mjs` that asserts the `v1` output equals a fixture of the current payload and that the `v2` keys match the schema; verify `npm test` passes
+- [x] 3.2 Make `buildPagePayload` branch on `schemaVersion`: `v1` reproduces today's payload, `v2` writes Task, Description (truncated to 2000 characters), Session Type, Status, Start, End, Streak, Device and Device ID (from `chrome.storage.local`, empty when unset) and an optional Day relation; add `test/payload.test.mjs` that asserts the `v1` output equals a fixture of the current payload and that the `v2` keys match the schema; verify `npm test` passes
 - [ ] 3.3 Add day-row find-or-create in `logSession` for `v2` with a `dailyDatabaseId`: check the cache in `chrome.storage.local`, otherwise query on `Date`, otherwise create a `YYYY-MM-DD` row; on a validation error, retry once with the cache cleared; on failure, log without `Day`; verify in Chrome that two sessions on the same day create one daily row and both link to it
 
 ## 4. Notion client: setup
 
-- [ ] 4.1 Add `buildSessionsDatabasePayload(parentId)`, `buildDailyDatabasePayload(parentId, sessionsId)` and the rollup/rename PATCH payload builders, all from `src/schema.ts`; extend `test/payload.test.mjs` to assert that the sessions database property names cover every `v2` page property and that every `SESSION_TYPES` label is a select option; verify `npm test` passes
+- [x] 4.1 Add `buildSessionsDatabasePayload(parentId)`, `buildDailyDatabasePayload(parentId, sessionsId)` and the rollup/rename PATCH payload builders, all from `src/schema.ts`; extend `test/payload.test.mjs` to assert that the sessions database property names cover every `v2` page property and that every `SESSION_TYPES` label is a select option; verify `npm test` passes
 - [ ] 4.2 Add `listParentPages(token)` (`POST /v1/search` filtered to pages, at most 100 results, excluding `parent.type === 'database_id'`, with an `Untitled` fallback); verify in Chrome that a page shared with the integration is listed and database rows are not
 - [ ] 4.3 Add `createLoggingDatabases(token, parentId)`, which runs the four-step sequence (create Sessions → create Daily with relation → PATCH rollups → PATCH rename the synced property to `Day`), with rollback through `DELETE /v1/blocks/{id}` on any failure after step 1, returning both IDs and URLs or an error that names any leftover database; verify `npm run typecheck`, and verify in Chrome that forcing a step-2 failure (for example a bad sessions ID in a temporary debug edit) leaves no database behind
 - [ ] 4.4 Add `detectSchemaVersion(token, databaseId)` (`GET /v1/databases/{id}`, `v2` if there is a `Task` title plus `Start` and `End` dates, else `v1`); verify in Chrome against an old-schema database (`v1`) and a database created by setup (`v2`)
@@ -37,8 +37,8 @@
 
 ## 6. Device rename job
 
-- [ ] 6.1 Add pure `buildRenameQuery(deviceId, name)` (a filter on `Device ID` equal to the ID **and** `Device` not equal to the name) and `buildDevicePatch(name)` in `src/notion.ts`; add tests in `test/payload.test.mjs`; verify `npm test` passes
-- [ ] 6.2 Implement the rename loop in `src/background.ts` (query → PATCH each row at about 3 per second → increase `pendingRename.updated` → re-query until empty → clear `pendingRename`), with a single-run guard and 429 `Retry-After` handling; add an `applyRename` `WorkerRequest`; verify with `npm run typecheck`
+- [x] 6.1 Add pure `buildRenameQuery(deviceId, name)` (a filter on `Device ID` equal to the ID **and** `Device` not equal to the name) and `buildDevicePatch(name)` in `src/notion.ts`; add tests in `test/payload.test.mjs`; verify `npm test` passes
+- [x] 6.2 Implement the rename loop in `src/background.ts` (query → PATCH each row at about 3 per second → increase `pendingRename.updated` → re-query until empty → clear `pendingRename`), with a single-run guard and 429 `Retry-After` handling; add an `applyRename` `WorkerRequest`; verify with `npm run typecheck`
 - [ ] 6.3 Resume the job on `chrome.runtime.onStartup` and from a `lookbusy-rename` alarm created while `pendingRename` exists; verify in Chrome that a rename resumes after you stop the service worker mid-run in `chrome://serviceworker-internals` and finishes on its own
 - [ ] 6.4 In `options.ts`, on Save with a changed device name and a `v2` database, write `pendingRename` (overwriting any existing one) and send `applyRename`; show progress and completion from `chrome.storage.onChanged`; for `v1` or no database, save the name without starting a job; verify in Chrome that renaming updates the past rows of this device only (seed one row by hand with a different `Device ID`) and that a second rename mid-job ends with the latest name
 
