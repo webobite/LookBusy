@@ -19,6 +19,29 @@
   <label><input id="sound" type="checkbox"> Play a sound when an interval ends</label>
   <div class="controls"><button id="save">Save</button></div>
   <div id="status" class="muted"></div>
+
+  <section class="setup">
+    <h2>Automatic setup</h2>
+    <div id="setupHint" class="muted"></div>
+    <div class="controls"><button id="setupStart">Create databases for me</button></div>
+    <div id="setupPick" hidden>
+      <label for="parent">Create the databases inside this page</label>
+      <select id="parent"></select>
+      <label for="parentUrl">…or paste a Notion page URL</label>
+      <input id="parentUrl" type="text" autocomplete="off" placeholder="https://www.notion.so/...">
+      <div class="controls"><button id="setupReview">Review</button></div>
+    </div>
+    <div id="setupStatus" class="muted"></div>
+  </section>
+
+  <dialog id="approve">
+    <h2>Create these databases?</h2>
+    <div id="approveBody"></div>
+    <div class="controls">
+      <button id="approveCreate">Create</button>
+      <button id="approveCancel" class="secondary">Cancel</button>
+    </div>
+  </dialog>
   <script type="module" src="options.js"></script>
 </body>
 </html>
