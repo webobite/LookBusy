@@ -1,6 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildPagePayload } from '../dist/src/notion.js';
+import {
+  buildDailyDatabasePayload,
+  buildDailyRollupsPatch,
+  buildPagePayload,
+  buildSessionsDatabasePayload,
+  schemaVersionOf
+} from '../dist/src/notion.js';
+import { SESSION_TYPES } from '../dist/src/constants.js';
 import { SESSION_PROPS } from '../dist/src/schema.js';
 
 const startedAt = Date.UTC(2026, 9, 6, 9, 0);
@@ -50,4 +57,33 @@ test('v2 payload without device, description or day', () => {
 test('v2 description is truncated to 2000 characters', () => {
   const p = buildPagePayload({ ...session, description: 'x'.repeat(2500), databaseId: 'db', schemaVersion: 'v2' });
   assert.equal(p.properties.Description.rich_text[0].text.content.length, 2000);
+});
+
+test('sessions database defines every property a v2 page writes', () => {
+  const db = buildSessionsDatabasePayload('parent');
+  const page = buildPagePayload({ ...session, databaseId: 'db', schemaVersion: 'v2', dayPageId: 'd' });
+  const dbProps = new Set([...Object.keys(db.properties), SESSION_PROPS.day]); // Day comes from the relation
+  for (const name of Object.keys(page.properties)) assert.ok(dbProps.has(name), `missing ${name}`);
+  assert.equal(Object.keys(db.properties).length + 1, 11);
+});
+
+test('every session type label is a select option', () => {
+  const options = buildSessionsDatabasePayload('parent').properties['Session Type'].select.options.map((o) => o.name);
+  for (const t of Object.values(SESSION_TYPES)) assert.ok(options.includes(t.label));
+});
+
+test('daily database relates to sessions and rolls up focus count', () => {
+  const daily = buildDailyDatabasePayload('parent', 'sessions-id');
+  assert.equal(daily.properties.Sessions.relation.database_id, 'sessions-id');
+  const rollups = buildDailyRollupsPatch().properties;
+  assert.deepEqual(rollups['Focus Pomodoros'].rollup, {
+    relation_property_name: 'Sessions', rollup_property_name: 'Focus Count', function: 'sum'
+  });
+  assert.equal(rollups['Total Sessions'].rollup.function, 'count');
+});
+
+test('schema version detection', () => {
+  assert.equal(schemaVersionOf({ Task: { type: 'title' }, Start: { type: 'date' }, End: { type: 'date' } }), 'v2');
+  assert.equal(schemaVersionOf({ Name: { type: 'title' }, Date: { type: 'date' } }), 'v1');
+  assert.equal(schemaVersionOf({ Task: { type: 'rich_text' }, Start: { type: 'date' }, End: { type: 'date' } }), 'v1');
 });
