@@ -28,6 +28,45 @@ export interface CompletedSession {
   endedAt: number;
 }
 
+export type SchemaVersion = 'v1' | 'v2';
+
+// Per-device identity, kept in chrome.storage.local.
+export interface Device {
+  name: string;
+  id: string;
+}
+
+export interface StreakState {
+  lastFocusDay: string | null; // local YYYY-MM-DD
+  streak: number;
+}
+
+export interface DayCache {
+  dailyDatabaseId: string;
+  day: string;
+  pageId: string;
+}
+
+export interface PendingRename {
+  deviceId: string;
+  name: string;
+  updated: number;
+}
+
+export interface ParentPage {
+  id: string;
+  title: string;
+}
+
+export interface CreatedDatabase {
+  id: string;
+  url: string;
+}
+
+export type SetupResult =
+  | { ok: true; sessions: CreatedDatabase; daily: CreatedDatabase }
+  | { ok: false; error: string };
+
 // Messages from the popup to the service worker. Every one responds with TimerState.
 export type WorkerRequest =
   | { action: 'start'; task?: string }
